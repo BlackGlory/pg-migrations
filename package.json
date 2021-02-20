@@ -1,0 +1,73 @@
+{
+  "name": "@blackglory/pg-migrations",
+  "version": "0.1.0",
+  "description": "A utility for database migrations with pg",
+  "keywords": [
+    "migration",
+    "migrations",
+    "postgres",
+    "up",
+    "down",
+    "sql"
+  ],
+  "files": [
+    "lib"
+  ],
+  "main": "lib/es2018/index.js",
+  "types": "lib/es2018/index.d.ts",
+  "repository": "git@github.com:BlackGlory/pg-migrations.git",
+  "author": "BlackGlory <woshenmedoubuzhidao@blackglory.me>",
+  "license": "MIT",
+  "scripts": {
+    "lint": "eslint --ext .js,.jsx,.ts,.tsx --quiet src __tests__",
+    "test": "jest --config jest.config.js",
+    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
+    "test:coverage": "jest --coverage --config jest.config.js",
+    "prepublishOnly": "run-s clean build",
+    "clean": "rimraf lib",
+    "build": "run-p build:*",
+    "build:es2015": "run-s build:es2015:*",
+    "build:es2015:compile": "tsc --project tsconfig.build.json --target es2015 --outDir lib/es2015",
+    "build:es2015:patch": "tscpaths -p tsconfig.build.json -s ./src -o ./lib/es2015",
+    "build:es2018": "run-s build:es2018:*",
+    "build:es2018:compile": "tsc --project tsconfig.build.json --target es2018 --outDir lib/es2018",
+    "build:es2018:patch": "tscpaths -p tsconfig.build.json -s ./src -o ./lib/es2018",
+    "docker:test": "run-s docker:test:build docker:test:run; run-s docker:test:clean",
+    "docker:test:build": "docker-compose --file docker-compose.test.yml build",
+    "docker:test:run": "docker-compose --file docker-compose.test.yml run --rm sut",
+    "docker:test:clean": "docker-compose --file docker-compose.test.yml down",
+    "release": "standard-version"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "run-s lint docker:test",
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^11.0.0",
+    "@commitlint/config-conventional": "^11.0.0",
+    "@types/jest": "^26.0.14",
+    "@types/node": "^14.14.24",
+    "@types/pg": "^7.14.10",
+    "@typescript-eslint/eslint-plugin": "^4.4.1",
+    "@typescript-eslint/parser": "^4.4.1",
+    "eslint": "^7.11.0",
+    "husky": "^4.3.0",
+    "jest": "^26.5.3",
+    "npm-run-all": "^4.1.5",
+    "pg": "^8.5.1",
+    "rimraf": "^3.0.2",
+    "standard-version": "^9.0.0",
+    "ts-jest": "^26.4.1",
+    "tscpaths": "^0.0.9",
+    "typescript": "^4.0.3"
+  },
+  "dependencies": {
+    "@blackglory/errors": "^1.1.2",
+    "@blackglory/types": "^0.2.13"
+  },
+  "peerDependencies": {
+    "pg": "8.x"
+  }
+}

@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  sut:
+    build: .
+    depends_on:
+      - postgres
+    command: test
+
+  postgres:
+    image: 'postgres:13'
+    environment:
+      - 'POSTGRES_PASSWORD=password'
