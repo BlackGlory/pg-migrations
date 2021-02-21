@@ -1,9 +1,11 @@
 import { Client } from 'pg'
 import { migrate, IMigration } from '@src/migrate'
-import { ensureTestDatabase, connect, disconnect, getClient } from '@test/utils'
+import { resetTestDatabase, connect, disconnect, getClient } from '@test/utils'
 
-beforeAll(ensureTestDatabase)
-beforeEach(connect)
+beforeEach(async () => {
+  await resetTestDatabase()
+  await connect()
+})
 afterEach(disconnect)
 
 const migrations: IMigration[] = [
