@@ -1,9 +1,9 @@
 import { Client } from 'pg'
 import { migrate, IMigration } from '@src/migrate'
-import { resetTestDatabase, connect, disconnect, getClient } from '@test/utils'
+import { resetDatabase, connect, disconnect, getClient } from '@test/utils'
 
 beforeEach(async () => {
-  await resetTestDatabase()
+  await resetDatabase()
   await connect()
 })
 afterEach(disconnect)

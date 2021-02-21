@@ -21,7 +21,7 @@ export async function disconnect(): Promise<void> {
   await client.end()
 }
 
-export async function resetTestDatabase(): Promise<void> {
+export async function resetDatabase(): Promise<void> {
   const client = new Client({
     host: 'postgres'
   , database: 'postgres'
