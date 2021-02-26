@@ -105,8 +105,8 @@ async function getDatabaseTables(client: Client): Promise<string[]> {
   const result = await client.query<{ table_name: string }>(`
     SELECT table_name
       FROM information_schema.tables
-     WHERE table_schema='public'
-       AND table_type='BASE TABLE';
+     WHERE table_schema = 'public'
+       AND table_type = 'BASE TABLE';
   `)
   return result.rows.map(x => x.table_name)
 }
