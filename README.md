@@ -33,7 +33,7 @@ function migrate(
 
 If targetVersion is `undefined`, then use the maximum version of migrations.
 
-### FAQ
-#### What if my migration requires more than 1 connection?
+## FAQ
+### What if my migration requires more than 1 connection?
 Although only one `pg.Client` is provided,
 you can get all connection configurations through properties to create a new `pg.Client`.
