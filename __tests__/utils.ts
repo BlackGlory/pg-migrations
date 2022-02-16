@@ -6,13 +6,17 @@ export function getClient(): Client {
   return client
 }
 
-export async function connect(): Promise<void> {
-  client = new Client({
+export function createNewClient(): Client {
+  return new Client({
     host: 'postgres'
   , database: 'test'
   , user: 'postgres'
   , password: 'password'
   })
+}
+
+export async function connect(): Promise<void> {
+  client = createNewClient()
 
   await client.connect()
 }

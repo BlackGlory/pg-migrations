@@ -12,54 +12,72 @@ export async function migrate(
   client: Client
 , migrations: IMigration[]
 , targetVersion = getMaximumVersion(migrations)
+, migrationsTable: string = 'migrations'
+, advisoryLockKey: bigint = BigInt('-9223372036854775808') // The smallest bigint for postgres
 ): Promise<void> {
-  let currentVersion: number
-  while ((currentVersion = await getDatabaseVersion(client)) !== targetVersion) {
-    if (currentVersion < targetVersion) {
-      await upgrade()
-    } else {
-      await downgrade()
+  const maxVersion = getMaximumVersion(migrations)
+  await lock(client, advisoryLockKey)
+  try {
+    while (true) {
+      const currentVersion = await getDatabaseVersion(client, migrationsTable)
+      if (maxVersion < currentVersion) {
+        break
+      } else {
+        if (currentVersion === targetVersion) {
+          break
+        } else if (currentVersion < targetVersion) {
+          await upgrade()
+        } else {
+          await downgrade()
+        }
+      }
     }
+  } finally {
+    await unlock(client, advisoryLockKey)
   }
 
   async function upgrade() {
-    const currentVersion = await getDatabaseVersion(client)
+    await client.query('BEGIN')
+    const currentVersion: number = await getDatabaseVersion(client, migrationsTable)
     const targetVersion = currentVersion + 1
-
-    const migration = migrations.find(x => x.version === targetVersion)
-    assert(migration, `Cannot find migration for version ${targetVersion}`)
-
     try {
+      const migration = migrations.find(x => x.version === targetVersion)
+      assert(migration, `Cannot find migration for version ${targetVersion}`)
+
       if (isFunction(migration.up)) {
         await migration.up(client)
       } else {
         await client.query(migration.up)
       }
+      await setDatabaseVersion(client, migrationsTable, targetVersion)
+      await client.query('COMMIT')
     } catch (e) {
       console.error(`Upgrade from version ${currentVersion} to version ${targetVersion} failed.`)
+      await client.query('ROLLBACK')
       throw e
     }
-    await setDatabaseVersion(client, targetVersion)
   }
 
   async function downgrade() {
-    const currentVersion = await getDatabaseVersion(client)
+    await client.query('BEGIN')
+    const currentVersion = await getDatabaseVersion(client, migrationsTable)
     const targetVersion = currentVersion - 1
-
-    const migration = migrations.find(x => x.version === currentVersion)
-    assert(migration, `Cannot find migration for version ${targetVersion}`)
-
     try {
+      const migration = migrations.find(x => x.version === currentVersion)
+      assert(migration, `Cannot find migration for version ${targetVersion}`)
+
       if (isFunction(migration.down)) {
         await migration.down(client)
       } else {
         await client.query(migration.down)
       }
+      await setDatabaseVersion(client, migrationsTable, targetVersion)
+      await client.query('COMMIT')
     } catch (e) {
       console.error(`Downgrade from version ${currentVersion} to version ${targetVersion} failed.`)
+      await client.query('ROLLBACK')
       throw e
     }
-    await setDatabaseVersion(client, targetVersion)
   }
 }
 
@@ -67,28 +85,51 @@ function getMaximumVersion(migrations: IMigration[]): number {
   return migrations.reduce((max, cur) => Math.max(cur.version, max), 0)
 }
 
-async function getDatabaseVersion(client: Client): Promise<number> {
-  const result = await client.query<{ version: number }>(`
-    SELECT COALESCE(current_setting('migrations.schema_version', true), '0')::integer AS version;
+async function getDatabaseVersion(client: Client, migrationTable: string): Promise<number> {
+  await ensureMigrationsTable(client, migrationTable)
+
+  const result = await client.query<{ schema_version: number }>(`
+    SELECT schema_version
+      FROM "${migrationTable}";
   `)
-  return result.rows[0].version
+  if (result.rows.length) {
+    return result.rows[0].schema_version
+  } else {
+    await client.query(`
+      INSERT INTO "${migrationTable}" (schema_version)
+      VALUES (0);
+    `)
+    return 0
+  }
 }
 
-async function setDatabaseVersion(client: Client, version: number): Promise<void> {
-  const database = await getCurrentDatabase(client)
-
+async function ensureMigrationsTable(client: Client, migrationTable: string): Promise<void> {
   await client.query(`
-    SET migrations.schema_version to ${version};
-
-    ALTER DATABASE "${database}"
-      SET migrations.schema_version
-     FROM current;
+    CREATE TABLE IF NOT EXISTS "${migrationTable}" (
+      schema_version INTEGER NOT NULL
+    );
   `)
 }
 
-async function getCurrentDatabase(client: Client): Promise<string> {
-  const result = await client.query<{ database: string }>(`
-    SELECT current_database() AS database;
+async function setDatabaseVersion(
+  client: Client
+, migrationTable: string
+, version: number
+): Promise<void> {
+  await client.query(`
+    UPDATE ${migrationTable}
+       SET schema_version = ${version};
   `)
-  return result.rows[0].database
+}
+
+async function lock(client: Client, key: bigint): Promise<void> {
+  await client.query(`
+    SELECT pg_advisory_lock(${key});
+  `)
+}
+
+async function unlock(client: Client, key: bigint): Promise<void> {
+  await client.query(`
+    SELECT pg_advisory_unlock(${key});
+  `)
 }

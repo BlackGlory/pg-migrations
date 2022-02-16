@@ -1,10 +1,9 @@
 # pg-migrations
 A utility for database migrations with [pg].
 
-The module using [customized options] `migrations.schema_version` to record the schema version.
+The module create a simple migrations table to record the schema version.
 
 [pg]: https://www.npmjs.com/package/pg
-[customized options]: https://www.postgresql.org/docs/current/runtime-config-custom.html
 
 ## Install
 ```sh
@@ -27,13 +26,17 @@ interface IMigration {
 function migrate(
   client: Client
 , migrations: IMigration[]
-, targetVersion?: number
+, targetVersion = getMaximumVersion(migrations)
+, migrationsTable: string = 'migrations'
+, advisoryLockKey: bigint = BigInt('-9223372036854775808') // The smallest bigint for postgres
 ): Promise<void>
 ```
 
-If targetVersion is `undefined`, then use the maximum version of migrations.
-
 ## FAQ
-### What if my migration requires more than 1 connection?
-Although only one `pg.Client` is provided,
-you can get all connection configurations through properties to create a new `pg.Client`.
+### Can multiple instances migrate in parallel?
+Yes, it uses advisory lock to ensure that only one instance is migrating at a time.
+When the maximum migration version is less than the database schema version (which means it is an obsolete instance), it will skip the migration.
+
+### What if my migration requires more than one connection?
+You can get all connection configurations through properties to create a new `pg.Client`.
+It is important to note that the custom client you create is not part of the migration transaction.

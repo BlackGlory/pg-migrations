@@ -1,6 +1,6 @@
 import { Client } from 'pg'
 import { migrate, IMigration } from '@src/migrate'
-import { resetDatabase, connect, disconnect, getClient } from '@test/utils'
+import { createNewClient, resetDatabase, connect, disconnect, getClient } from '@test/utils'
 
 beforeEach(async () => {
   await resetDatabase()
@@ -37,7 +37,43 @@ const migrations: IMigration[] = [
   }
 ]
 
-describe('migrate(db: Database, migrations: Migration[], targetVersion: number): void', () => {
+describe('migrate', () => {
+  test('migrate in parallel', async () => {
+    const client = getClient()
+    const client1 = createNewClient()
+    const client2 = createNewClient()
+    client1.connect()
+    client2.connect()
+
+    try {
+      const versionBefore = await getDatabaseVersion(client)
+      await Promise.all([
+        migrate(client1, migrations, 2)
+      , migrate(client2, migrations, 2)
+      ])
+      const versionAfter = await getDatabaseVersion(client)
+      const tables = await getDatabaseTables(client)
+      const schema = await getTableSchema(client, 'test')
+
+      expect(versionBefore).toBe(0)
+      expect(versionAfter).toBe(2)
+      expect(tables).toEqual(['test'])
+      expect(schema).toMatchObject([
+        {
+          name: 'id'
+        , type: 'integer'
+        }
+      , {
+          name: 'name'
+        , type: 'text'
+        }
+      ])
+    } finally {
+      await client1.end()
+      await client2.end()
+    }
+  })
+
   describe('upgrade', () => {
     it('upgrade', async () => {
       const client = getClient()
@@ -81,11 +117,16 @@ describe('migrate(db: Database, migrations: Migration[], targetVersion: number):
   })
 })
 
-async function getDatabaseVersion(client: Client): Promise<number> {
-  const result = await client.query<{ version: number }>(`
-    SELECT COALESCE(current_setting('migrations.schema_version', true), '0')::integer AS version;
-  `)
-  return result.rows[0].version
+async function getDatabaseVersion(client: Client, migrationTable = 'migrations'): Promise<number> {
+  try {
+    const result = await client.query<{ schema_version: number }>(`
+      SELECT schema_version
+        FROM "${migrationTable}";
+    `)
+    return result.rows[0].schema_version
+  } catch (e) {
+    return 0
+  }
 }
 
 async function getTableSchema(client: Client, tableName: string): Promise<Array<{ name: string, type: string }>> {
@@ -101,12 +142,14 @@ async function getTableSchema(client: Client, tableName: string): Promise<Array<
   }))
 }
 
-async function getDatabaseTables(client: Client): Promise<string[]> {
+async function getDatabaseTables(client: Client, excludes: string[] = ['migrations']): Promise<string[]> {
   const result = await client.query<{ table_name: string }>(`
     SELECT table_name
       FROM information_schema.tables
      WHERE table_schema = 'public'
        AND table_type = 'BASE TABLE';
   `)
-  return result.rows.map(x => x.table_name)
+  return result.rows
+    .map(x => x.table_name)
+    .filter(tableName => !excludes.includes(tableName))
 }
