@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.2.0](https://github.com/BlackGlory/pg-migrations/compare/v0.1.3...v0.2.0) (2022-02-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* stop using customized options
+
+### Features
+
+* rewrite ([ae3c30a](https://github.com/BlackGlory/pg-migrations/commit/ae3c30a0cfd6014e95dbbd456309fc764e5c5f9d))
+
 ### [0.1.3](https://github.com/BlackGlory/pg-migrations/compare/v0.1.2...v0.1.3) (2021-07-03)
 
 ### [0.1.2](https://github.com/BlackGlory/pg-migrations/compare/v0.1.1...v0.1.2) (2021-03-17)
