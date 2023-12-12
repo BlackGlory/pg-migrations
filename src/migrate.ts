@@ -36,7 +36,7 @@ export async function migrate(
     await unlock(client, advisoryLockKey)
   }
 
-  async function upgrade() {
+  async function upgrade(): Promise<void> {
     await client.query('BEGIN')
     const currentVersion: number = await getDatabaseVersion(client, migrationsTable)
     const targetVersion = currentVersion + 1
@@ -58,7 +58,7 @@ export async function migrate(
     }
   }
 
-  async function downgrade() {
+  async function downgrade(): Promise<void> {
     await client.query('BEGIN')
     const currentVersion = await getDatabaseVersion(client, migrationsTable)
     const targetVersion = currentVersion - 1
