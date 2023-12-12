@@ -21,6 +21,8 @@ interface IMigration {
 }
 ```
 
+You may need [migration-files].
+
 ### migrate
 ```ts
 function migrate(
