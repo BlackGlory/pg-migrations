@@ -23,6 +23,8 @@ interface IMigration {
 
 You may need [migration-files].
 
+[migration-files]: https://github.com/BlackGlory/migration-files
+
 ### migrate
 ```ts
 function migrate(
