@@ -185,17 +185,20 @@ async function transaction<T>(client: Client, fn: () => Promise<T>): Promise<T> 
     inTransactionClients.add(client)
   }
 
-  await client.query('BEGIN')
   try {
-    const result = await fn()
+    await client.query('BEGIN')
 
-    await client.query('COMMIT')
+    try {
+      const result = await fn()
 
-    return result
-  } catch (e) {
-    await client.query('ROLLBACK')
+      await client.query('COMMIT')
 
-    throw e
+      return result
+    } catch (e) {
+      await client.query('ROLLBACK')
+
+      throw e
+    }
   } finally {
     inTransactionClients.delete(client)
   }
