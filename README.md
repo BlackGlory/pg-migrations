@@ -43,7 +43,7 @@ function migrate(
 If `options.targetVersion` is `undefined`,
 the maximum version of the `migrations` is used.
 
-When the maximum known migration version is less than the `user_version`,
+When the maximum known migration version is less than the database schema version,
 it means the current instance is outdated.
 - When `options.throwOnNewerVersion` is `false` (default),
   it will skip the migration,
