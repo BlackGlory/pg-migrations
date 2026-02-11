@@ -1,5 +1,6 @@
 import type { Client } from 'pg'
 import { assert, isFunction } from '@blackglory/prelude'
+import { max } from 'extra-utils'
 
 export interface IMigration {
   version: number
@@ -7,20 +8,36 @@ export interface IMigration {
   down: string | ((client: Client) => PromiseLike<void>)
 }
 
+interface IMigrateOptions {
+  targetVersion?: number
+  throwOnNewerVersion?: boolean
+
+  migrationsTable?: string
+  advisoryLockKey?: bigint
+}
+
 export async function migrate(
   client: Client
 , migrations: IMigration[]
-, targetVersion = getMaximumVersion(migrations)
-, migrationsTable: string = 'migrations'
-, advisoryLockKey: bigint = BigInt('-9223372036854775808') // The smallest bigint for postgres
+, {
+    targetVersion = getMaximumVersion(migrations)
+  , throwOnNewerVersion = false
+  , migrationsTable = 'migrations'
+  , advisoryLockKey = BigInt('-9223372036854775808') // The smallest bigint for postgres
+  }: IMigrateOptions = {}
 ): Promise<void> {
   const maxVersion = getMaximumVersion(migrations)
+
   await lock(client, advisoryLockKey)
   try {
     while (true) {
       const currentVersion = await getDatabaseVersion(client, migrationsTable)
       if (maxVersion < currentVersion) {
-        break
+        if (throwOnNewerVersion) {
+          throw new Error(`Database version ${currentVersion} is higher than the maximum known migration version.`)
+        } else {
+          break
+        }
       } else {
         if (currentVersion === targetVersion) {
           break
@@ -51,9 +68,12 @@ export async function migrate(
       await setDatabaseVersion(client, migrationsTable, targetVersion)
       await client.query('COMMIT')
     } catch (e) {
-      console.error(`Upgrade from version ${currentVersion} to version ${targetVersion} failed.`)
       await client.query('ROLLBACK')
-      throw e
+
+      throw new Error(
+        `Upgrade from version ${currentVersion} to version ${targetVersion} failed.`
+      , { cause: e }
+      )
     }
   }
 
@@ -73,15 +93,20 @@ export async function migrate(
       await setDatabaseVersion(client, migrationsTable, targetVersion)
       await client.query('COMMIT')
     } catch (e) {
-      console.error(`Downgrade from version ${currentVersion} to version ${targetVersion} failed.`)
       await client.query('ROLLBACK')
-      throw e
+
+      throw new Error(
+        `Downgrade from version ${currentVersion} to version ${targetVersion} failed.`
+      , { cause: e }
+      )
     }
   }
 }
 
 function getMaximumVersion(migrations: IMigration[]): number {
-  return migrations.reduce((max, cur) => Math.max(cur.version, max), 0)
+  return migrations
+    .map(x => x.version)
+    .reduce(max, 0)
 }
 
 async function getDatabaseVersion(client: Client, migrationTable: string): Promise<number> {
