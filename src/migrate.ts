@@ -30,33 +30,39 @@ export async function migrate(
 
   await lock(client, advisoryLockKey)
   try {
+
     await ensureMigrationsTable(client, migrationsTable)
 
     while (true) {
-      const currentVersion = await getDatabaseVersion(client, migrationsTable)
+      const done = await transaction(client, async () => {
+        const currentVersion = await getDatabaseVersion(client, migrationsTable)
 
-      if (maxVersion < currentVersion) {
-        if (throwOnNewerVersion) {
-          throw new Error(`Database version ${currentVersion} is higher than the maximum known migration version.`)
+        if (maxVersion < currentVersion) {
+          if (throwOnNewerVersion) {
+            throw new Error(`Database version ${currentVersion} is higher than the maximum known migration version.`)
+          } else {
+            return true
+          }
         } else {
-          break
+          if (currentVersion === targetVersion) {
+            return true
+          } else if (currentVersion < targetVersion) {
+            await upgrade()
+            return false
+          } else {
+            await downgrade()
+            return false
+          }
         }
-      } else {
-        if (currentVersion === targetVersion) {
-          break
-        } else if (currentVersion < targetVersion) {
-          await upgrade()
-        } else {
-          await downgrade()
-        }
-      }
+      })
+
+      if (done) break
     }
   } finally {
     await unlock(client, advisoryLockKey)
   }
 
   async function upgrade(): Promise<void> {
-    await client.query('BEGIN')
     const currentVersion: number = await getDatabaseVersion(client, migrationsTable)
     const targetVersion = currentVersion + 1
     try {
@@ -69,10 +75,7 @@ export async function migrate(
         await client.query(migration.up)
       }
       await setDatabaseVersion(client, migrationsTable, targetVersion)
-      await client.query('COMMIT')
     } catch (e) {
-      await client.query('ROLLBACK')
-
       throw new Error(
         `Upgrade from version ${currentVersion} to version ${targetVersion} failed.`
       , { cause: e }
@@ -81,7 +84,6 @@ export async function migrate(
   }
 
   async function downgrade(): Promise<void> {
-    await client.query('BEGIN')
     const currentVersion = await getDatabaseVersion(client, migrationsTable)
     const targetVersion = currentVersion - 1
     try {
@@ -94,10 +96,7 @@ export async function migrate(
         await client.query(migration.down)
       }
       await setDatabaseVersion(client, migrationsTable, targetVersion)
-      await client.query('COMMIT')
     } catch (e) {
-      await client.query('ROLLBACK')
-
       throw new Error(
         `Downgrade from version ${currentVersion} to version ${targetVersion} failed.`
       , { cause: e }
@@ -139,9 +138,7 @@ async function ensureMigrationsTable(
   client: Client
 , migrationTable: string
 ): Promise<void> {
-  await client.query('BEGIN')
-
-  try {
+  await transaction(client, async () => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "${migrationTable}" (
         schema_version INTEGER NOT NULL
@@ -154,13 +151,7 @@ async function ensureMigrationsTable(
         VALUES (0);
       `)
     }
-
-    await client.query('COMMIT')
-  } catch (e) {
-    await client.query('ROLLBACK')
-
-    throw e
-  }
+  })
 }
 
 async function setDatabaseVersion(
@@ -169,9 +160,9 @@ async function setDatabaseVersion(
 , version: number
 ): Promise<void> {
   await client.query(`
-    UPDATE ${migrationTable}
-       SET schema_version = ${version};
-  `)
+    UPDATE "${migrationTable}"
+       SET schema_version = $1;
+  `, [version])
 }
 
 async function lock(client: Client, key: bigint): Promise<void> {
@@ -184,4 +175,28 @@ async function unlock(client: Client, key: bigint): Promise<void> {
   await client.query(`
     SELECT pg_advisory_unlock(${key});
   `)
+}
+
+const inTransactionClients = new WeakSet<Client>()
+async function transaction<T>(client: Client, fn: () => Promise<T>): Promise<T> {
+  if (inTransactionClients.has(client)) {
+    throw new Error('PostgreSQL does not support nested transactions.')
+  } else {
+    inTransactionClients.add(client)
+  }
+
+  await client.query('BEGIN')
+  try {
+    const result = await fn()
+
+    await client.query('COMMIT')
+
+    return result
+  } catch (e) {
+    await client.query('ROLLBACK')
+
+    throw e
+  } finally {
+    inTransactionClients.delete(client)
+  }
 }
