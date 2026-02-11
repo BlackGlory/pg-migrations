@@ -11,5 +11,5 @@ jobs:
 
       - name: Run tests
         run: |
-          docker-compose --file docker-compose.test.yml build
-          docker-compose --file docker-compose.test.yml run sut
+          docker compose --file docker-compose.test.yml build
+          docker compose --file docker-compose.test.yml run test
