@@ -32,6 +32,7 @@ export async function migrate(
   try {
     while (true) {
       const currentVersion = await getDatabaseVersion(client, migrationsTable)
+
       if (maxVersion < currentVersion) {
         if (throwOnNewerVersion) {
           throw new Error(`Database version ${currentVersion} is higher than the maximum known migration version.`)
@@ -109,7 +110,10 @@ function getMaximumVersion(migrations: IMigration[]): number {
     .reduce(max, 0)
 }
 
-async function getDatabaseVersion(client: Client, migrationTable: string): Promise<number> {
+async function getDatabaseVersion(
+  client: Client
+, migrationTable: string
+): Promise<number> {
   await ensureMigrationsTable(client, migrationTable)
 
   const result = await client.query<{ schema_version: number }>(`
@@ -127,7 +131,10 @@ async function getDatabaseVersion(client: Client, migrationTable: string): Promi
   }
 }
 
-async function ensureMigrationsTable(client: Client, migrationTable: string): Promise<void> {
+async function ensureMigrationsTable(
+  client: Client
+, migrationTable: string
+): Promise<void> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS "${migrationTable}" (
       schema_version INTEGER NOT NULL

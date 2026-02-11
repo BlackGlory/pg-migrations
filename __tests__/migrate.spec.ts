@@ -45,21 +45,27 @@ describe('migrate', () => {
       const client = getClient()
       await setDatabaseVersion(client, 999)
 
-      await migrate(client, migrations, { targetVersion: 999 })
+      await migrate(client, migrations, {
+        targetVersion: 999
+      , throwOnNewerVersion: false
+      })
 
       const version = await getDatabaseVersion(client)
-      expect(version).toBe(0)
+      expect(version).toBe(999)
     })
 
     test('throwOnNewerVersion = true', async () => {
       const client = getClient()
       await setDatabaseVersion(client, 999)
 
-      const error = await getErrorAsync(() => migrate(client, migrations, { targetVersion: 999 }))
+      const error = await getErrorAsync(() => migrate(client, migrations, {
+        targetVersion: 999
+      , throwOnNewerVersion: true
+      }))
 
       expect(error).toBeInstanceOf(Error)
       const version = await getDatabaseVersion(client)
-      expect(version).toBe(0)
+      expect(version).toBe(999)
     })
   })
 
@@ -149,7 +155,10 @@ describe('migrate', () => {
   })
 })
 
-async function getDatabaseVersion(client: Client, migrationTable = 'migrations'): Promise<number> {
+async function getDatabaseVersion(
+  client: Client
+, migrationTable = 'migrations'
+): Promise<number> {
   try {
     const result = await client.query<{ schema_version: number }>(`
       SELECT schema_version
@@ -170,10 +179,16 @@ async function setDatabaseVersion(
     CREATE TABLE IF NOT EXISTS "${migrationTable}" (
       schema_version INTEGER NOT NULL
     );
-
-    UPDATE ${migrationTable}
-       SET schema_version = ${version};
   `)
+
+  await client.query(`
+    DELETE FROM "${migrationTable}";
+  `)
+
+  await client.query(`
+    INSERT INTO "${migrationTable}" (schema_version)
+    VALUES ($1);
+  `, [version])
 }
 
 async function getTableSchema(

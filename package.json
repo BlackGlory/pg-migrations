@@ -31,9 +31,9 @@
     "prepublishOnly": "run-s prepare clean build",
     "clean": "rimraf lib",
     "build": "tsc --project tsconfig.build.json",
-    "docker:test": "run-s docker:test:build docker:test:run; run-s docker:test:clean",
+    "docker:test": "run-s docker:test:clean docker:test:build docker:test:run docker:test:clean",
     "docker:test:build": "docker compose --file docker-compose.test.yml build",
-    "docker:test:run": "docker compose --file docker-compose.test.yml run --rm sut",
+    "docker:test:run": "docker compose --file docker-compose.test.yml run --rm test",
     "docker:test:clean": "docker compose --file docker-compose.test.yml down",
     "release": "standard-version"
   },
