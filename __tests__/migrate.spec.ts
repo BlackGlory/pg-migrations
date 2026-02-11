@@ -179,9 +179,7 @@ async function setDatabaseVersion(
     CREATE TABLE IF NOT EXISTS "${migrationTable}" (
       schema_version INTEGER NOT NULL
     );
-  `)
 
-  await client.query(`
     DELETE FROM "${migrationTable}";
   `)
 
