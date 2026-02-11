@@ -30,7 +30,6 @@ export async function migrate(
 
   await lock(client, advisoryLockKey)
   try {
-
     await ensureMigrationsTable(client, migrationsTable)
 
     while (true) {
