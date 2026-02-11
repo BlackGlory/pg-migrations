@@ -167,6 +167,10 @@ async function setDatabaseVersion(
 , migrationTable = 'migrations'
 ): Promise<void> {
   await client.query(`
+    CREATE TABLE IF NOT EXISTS "${migrationTable}" (
+      schema_version INTEGER NOT NULL
+    );
+
     UPDATE ${migrationTable}
        SET schema_version = ${version};
   `)
