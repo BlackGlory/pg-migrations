@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.3.0](https://github.com/BlackGlory/pg-migrations/compare/v0.2.3...v0.3.0) (2026-02-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **migrate:** Changed the function signature of `migrate`.
+* - CommonJS => ESM
+- Node.js v14 => Node.js v22
+
+### Features
+
+* **migrate:** add the `throwOnNewerVersion` option ([ebc7719](https://github.com/BlackGlory/pg-migrations/commit/ebc7719fc4e243dee03f6111baafb600d03f7fa0))
+
+
+### Bug Fixes
+
+* transactions ([f25caf4](https://github.com/BlackGlory/pg-migrations/commit/f25caf459139284b6e442dea080ffa3c0dd153fa))
+
+
+* upgrade dependencies ([02531b5](https://github.com/BlackGlory/pg-migrations/commit/02531b52b93f2fae505277a4cd06e449433c34c6))
+
 ### [0.2.3](https://github.com/BlackGlory/pg-migrations/compare/v0.2.2...v0.2.3) (2023-06-11)
 
 
