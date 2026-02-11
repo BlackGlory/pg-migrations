@@ -1,6 +1,5 @@
 import type { Client } from 'pg'
-import { isFunction } from '@blackglory/types'
-import { assert } from '@blackglory/errors'
+import { assert, isFunction } from '@blackglory/prelude'
 
 export interface IMigration {
   version: number

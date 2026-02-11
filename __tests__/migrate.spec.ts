@@ -1,3 +1,4 @@
+import { describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { Client } from 'pg'
 import { migrate, IMigration } from '@src/migrate'
 import { createNewClient, resetDatabase, connect, disconnect, getClient } from '@test/utils'
@@ -74,46 +75,42 @@ describe('migrate', () => {
     }
   })
 
-  describe('upgrade', () => {
-    it('upgrade', async () => {
-      const client = getClient()
+  test('upgrade', async () => {
+    const client = getClient()
 
-      const versionBefore = await getDatabaseVersion(client)
-      await migrate(client, migrations, 2)
-      const versionAfter = await getDatabaseVersion(client)
-      const tables = await getDatabaseTables(client)
-      const schema = await getTableSchema(client, 'test')
+    const versionBefore = await getDatabaseVersion(client)
+    await migrate(client, migrations, 2)
+    const versionAfter = await getDatabaseVersion(client)
+    const tables = await getDatabaseTables(client)
+    const schema = await getTableSchema(client, 'test')
 
-      expect(versionBefore).toBe(0)
-      expect(versionAfter).toBe(2)
-      expect(tables).toEqual(['test'])
-      expect(schema).toMatchObject([
-        {
-          name: 'id'
-        , type: 'integer'
-        }
-      , {
-          name: 'name'
-        , type: 'text'
-        }
-      ])
-    })
+    expect(versionBefore).toBe(0)
+    expect(versionAfter).toBe(2)
+    expect(tables).toEqual(['test'])
+    expect(schema).toMatchObject([
+      {
+        name: 'id'
+      , type: 'integer'
+      }
+    , {
+        name: 'name'
+      , type: 'text'
+      }
+    ])
   })
 
-  describe('downgrade', () => {
-    it('downgrade', async () => {
-      const client = getClient()
-      await migrate(client, migrations, 2)
+  test('downgrade', async () => {
+    const client = getClient()
+    await migrate(client, migrations, 2)
 
-      const versionBefore = await getDatabaseVersion(client)
-      await migrate(client, migrations, 0)
-      const versionAfter = await getDatabaseVersion(client)
-      const tables = await getDatabaseTables(client)
+    const versionBefore = await getDatabaseVersion(client)
+    await migrate(client, migrations, 0)
+    const versionAfter = await getDatabaseVersion(client)
+    const tables = await getDatabaseTables(client)
 
-      expect(versionBefore).toBe(2)
-      expect(versionAfter).toBe(0)
-      expect(tables).toEqual([])
-    })
+    expect(versionBefore).toBe(2)
+    expect(versionAfter).toBe(0)
+    expect(tables).toEqual([])
   })
 })
 
@@ -124,7 +121,7 @@ async function getDatabaseVersion(client: Client, migrationTable = 'migrations')
         FROM "${migrationTable}";
     `)
     return result.rows[0].schema_version
-  } catch (e) {
+  } catch {
     return 0
   }
 }
