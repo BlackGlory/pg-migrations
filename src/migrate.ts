@@ -1,6 +1,6 @@
 import type { Client } from 'pg'
 import { assert, isFunction } from '@blackglory/prelude'
-import { max } from 'extra-utils'
+import { first, isntUndefined, isUndefined, max } from 'extra-utils'
 
 export interface IMigration {
   version: number
@@ -30,6 +30,8 @@ export async function migrate(
 
   await lock(client, advisoryLockKey)
   try {
+    await ensureMigrationsTable(client, migrationsTable)
+
     while (true) {
       const currentVersion = await getDatabaseVersion(client, migrationsTable)
 
@@ -114,32 +116,51 @@ async function getDatabaseVersion(
   client: Client
 , migrationTable: string
 ): Promise<number> {
-  await ensureMigrationsTable(client, migrationTable)
+  const version = await tryGetDatabaseVersion(client, migrationTable)
+  assert(isntUndefined(version))
 
+  return version
+}
+
+async function tryGetDatabaseVersion(
+  client: Client
+, migrationTable: string
+): Promise<number | undefined> {
   const result = await client.query<{ schema_version: number }>(`
     SELECT schema_version
-      FROM "${migrationTable}";
+      FROM "${migrationTable}"
+     LIMIT 1;
   `)
-  if (result.rows.length) {
-    return result.rows[0].schema_version
-  } else {
-    await client.query(`
-      INSERT INTO "${migrationTable}" (schema_version)
-      VALUES (0);
-    `)
-    return 0
-  }
+
+  return first(result.rows)?.schema_version
 }
 
 async function ensureMigrationsTable(
   client: Client
 , migrationTable: string
 ): Promise<void> {
-  await client.query(`
-    CREATE TABLE IF NOT EXISTS "${migrationTable}" (
-      schema_version INTEGER NOT NULL
-    );
-  `)
+  await client.query('BEGIN')
+
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "${migrationTable}" (
+        schema_version INTEGER NOT NULL
+      );
+    `)
+
+    if (isUndefined(await tryGetDatabaseVersion(client, migrationTable))) {
+      await client.query(`
+        INSERT INTO "${migrationTable}" (schema_version)
+        VALUES (0);
+      `)
+    }
+
+    await client.query('COMMIT')
+  } catch (e) {
+    await client.query('ROLLBACK')
+
+    throw e
+  }
 }
 
 async function setDatabaseVersion(
