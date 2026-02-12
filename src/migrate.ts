@@ -87,7 +87,7 @@ export async function migrate(
     const targetVersion = currentVersion - 1
     try {
       const migration = migrations.find(x => x.version === currentVersion)
-      assert(migration, `Cannot find migration for version ${targetVersion}`)
+      assert(migration, `Cannot find migration for version ${currentVersion}`)
 
       if (isFunction(migration.down)) {
         await migration.down(client)
