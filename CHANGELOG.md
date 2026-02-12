@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.1](https://github.com/BlackGlory/pg-migrations/compare/v0.3.0...v0.3.1) (2026-02-12)
+
+
+### Bug Fixes
+
+* **downgrade:** the error message ([63b85f1](https://github.com/BlackGlory/pg-migrations/commit/63b85f1ddaebe7c15a5b2f5b97a4131bc49dcafd))
+
 ## [0.3.0](https://github.com/BlackGlory/pg-migrations/compare/v0.2.3...v0.3.0) (2026-02-11)
 
 
