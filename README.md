@@ -15,7 +15,9 @@ yarn add @blackglory/pg-migrations
 ## API
 ```ts
 interface IMigration {
+  // An integer starting from 1
   version: number
+
   up: string | ((client: Client) => PromiseLike<void>)
   down: string | ((client: Client) => PromiseLike<void>)
 }
