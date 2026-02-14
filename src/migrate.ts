@@ -126,7 +126,7 @@ async function tryGetDatabaseVersion(
 ): Promise<number | undefined> {
   const result = await client.query<{ schema_version: number }>(`
     SELECT schema_version
-      FROM "${migrationTable}"
+      FROM ${client.escapeIdentifier(migrationTable)}
      LIMIT 1;
   `)
 
@@ -139,14 +139,14 @@ async function ensureMigrationsTable(
 ): Promise<void> {
   await transaction(client, async () => {
     await client.query(`
-      CREATE TABLE IF NOT EXISTS "${migrationTable}" (
+      CREATE TABLE IF NOT EXISTS ${client.escapeIdentifier(migrationTable)} (
         schema_version INTEGER NOT NULL
       );
     `)
 
     if (isUndefined(await tryGetDatabaseVersion(client, migrationTable))) {
       await client.query(`
-        INSERT INTO "${migrationTable}" (schema_version)
+        INSERT INTO ${client.escapeIdentifier(migrationTable)} (schema_version)
         VALUES (0);
       `)
     }
@@ -159,7 +159,7 @@ async function setDatabaseVersion(
 , version: number
 ): Promise<void> {
   await client.query(`
-    UPDATE "${migrationTable}"
+    UPDATE ${client.escapeIdentifier(migrationTable)}
        SET schema_version = $1;
   `, [version])
 }

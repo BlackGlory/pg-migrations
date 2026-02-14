@@ -162,7 +162,7 @@ async function getDatabaseVersion(
   try {
     const result = await client.query<{ schema_version: number }>(`
       SELECT schema_version
-        FROM "${migrationTable}";
+        FROM ${client.escapeIdentifier(migrationTable)};
     `)
     return result.rows[0].schema_version
   } catch {
@@ -176,15 +176,15 @@ async function setDatabaseVersion(
 , migrationTable = 'migrations'
 ): Promise<void> {
   await client.query(`
-    CREATE TABLE IF NOT EXISTS "${migrationTable}" (
+    CREATE TABLE IF NOT EXISTS ${client.escapeIdentifier(migrationTable)} (
       schema_version INTEGER NOT NULL
     );
 
-    DELETE FROM "${migrationTable}";
+    DELETE FROM ${client.escapeIdentifier(migrationTable)};
   `)
 
   await client.query(`
-    INSERT INTO "${migrationTable}" (schema_version)
+    INSERT INTO ${client.escapeIdentifier(migrationTable)} (schema_version)
     VALUES ($1);
   `, [version])
 }
@@ -196,7 +196,10 @@ async function getTableSchema(
   name: string
   type: string
 }>> {
-  const result = await client.query<{ column_name: string, data_type: string }>(`
+  const result = await client.query<{
+    column_name: string
+    data_type: string
+  }>(`
     SELECT column_name, data_type
       FROM information_schema.columns
      WHERE table_name = $1;
@@ -212,7 +215,9 @@ async function getDatabaseTables(
   client: Client
 , excludes: string[] = ['migrations']
 ): Promise<string[]> {
-  const result = await client.query<{ table_name: string }>(`
+  const result = await client.query<{
+    table_name: string
+  }>(`
     SELECT table_name
       FROM information_schema.tables
      WHERE table_schema = 'public'
